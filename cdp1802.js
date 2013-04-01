@@ -642,7 +642,7 @@ Cdp1802Obj.prototype.subMemoryBorrowImmediate = function() {
 /* BRANCH INSTRUCTIONS - SHORT BRANCH */
 
 // BR 30 - Short branch
-Cdp1802Obj.prototype.shortBranch(b) {
+Cdp1802Obj.prototype.shortBranch = function(b) {
     if (b) {
         this.R[this.P] = (this.R[this.P] & 0xff00) | this.context.read(this.R[this.P]);
     } else {
@@ -653,7 +653,7 @@ Cdp1802Obj.prototype.shortBranch(b) {
 /* BRANCH INSTRUCTIONS - LONG BRANCH */
 
 // LBR C0 - Long branch
-Cdp1802Obj.prototype.longBranch(b) {
+Cdp1802Obj.prototype.longBranch = function(b) {
     if (b) {
         this.R[this.P] = (this.context.read(this.R[this.P]) << 8) | this.context.read(this.R[this.P] + 1);
     } else {
@@ -664,7 +664,7 @@ Cdp1802Obj.prototype.longBranch(b) {
 /* SKIP INSTRUCTIONS */
 
 // LSKP C8 - Long skip
-Cdp1802Obj.prototype.longSkip(b) {
+Cdp1802Obj.prototype.longSkip = function(b) {
     if (b) {
         this.R[this.P] += 2;
     }
@@ -690,7 +690,7 @@ Cdp1802Obj.prototype.setX = function() {
 
 // SEQ 7B - Set Q
 // REQ 7A - Reset Q (b=false)
-Cdp1802Obj.prototype.setQ(b) {
+Cdp1802Obj.prototype.setQ = function(b) {
     this.Q = b;
     this.context.q(b);
 }
