@@ -66,7 +66,7 @@ Cdp1802Obj.prototype.reset = function() {
     this.IE = true;
     this.idle = false;
     this.setQ(false);
-    this.context.out(0, 0);
+    this.context.output(0, 0);
 };
 
 // Executes a given number of machine cycles
@@ -182,7 +182,7 @@ Cdp1802Obj.prototype.instruction = function() {
                 case 0x6:
                 case 0x7:
                     // output from memory to bus, nlines=N
-                    this.out();
+                    this.output();
                     return 2;
                 case 0x8: // 68 is an unused instruction (reserved for CDP1805)
                     return 2;
@@ -194,7 +194,7 @@ Cdp1802Obj.prototype.instruction = function() {
                 case 0xe:
                 case 0xf:
                     // input to memory and D, nlines=N
-                    this.in();
+                    this.input();
                     return 2;
             }
             break;
@@ -396,12 +396,12 @@ Cdp1802Obj.prototype.interrupt = function() {
 
 /* INPUT - OUTPUT BYTE TRANSFER */
 
-Cdp1802Obj.prototype.out = function() {
-    this.context.out(this.N, this.context.read(this.R[this.X]++));
+Cdp1802Obj.prototype.output = function() {
+    this.context.output(this.N, this.context.read(this.R[this.X]++));
 }
 
-Cdp1802Obj.prototype.in = function() {
-    this.D = this.context.in(this.N & 0x7);
+Cdp1802Obj.prototype.input = function() {
+    this.D = this.context.input(this.N & 0x7);
     this.context.write(this.R[this.X], this.D);
 }
 
@@ -677,7 +677,7 @@ Cdp1802Obj.prototype.longSkip = function(b) {
 // IDL 00 - Idle
 Cdp1802Obj.prototype.goIdle = function() {
     this.idle = true;
-    this.context.out(0, this.context.read(this.R[0]));
+    this.context.output(0, this.context.read(this.R[0]));
 }
 
 // SEP DN - Set P
@@ -694,7 +694,7 @@ Cdp1802Obj.prototype.setX = function() {
 // REQ 7A - Reset Q (b=false)
 Cdp1802Obj.prototype.setQ = function(b) {
     this.Q = b;
-    this.context.q(b);
+    this.context.setQ(b);
 }
 
 // SAV 78 - Save
