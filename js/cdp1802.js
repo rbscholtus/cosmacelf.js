@@ -60,6 +60,7 @@ var Cdp1802Obj = function(context) {
     this.T = 0;
 };
 
+// Resets the CPU
 Cdp1802Obj.prototype.reset = function() {
     this.I = this.N = this.X = this.P = this.R[0] = 0;
     this.IE = true;
@@ -68,9 +69,11 @@ Cdp1802Obj.prototype.reset = function() {
     this.context.out(0, 0);
 };
 
+// Executes a given number of machine cycles
+// Most CPU instructions take 2 machine cycles
 Cdp1802Obj.prototype.execute = function(cycles) {
 
-    // fetch, this.Decode, execute
+    // fetch, decode, execute
     var cyclesDone = 0;
     while (cyclesDone < cycles) {
         cyclesDone += this.instruction();
@@ -79,6 +82,7 @@ Cdp1802Obj.prototype.execute = function(cycles) {
     return cyclesDone;
 };
 
+// Executes a single instruction, returning the number of machine cycles used
 Cdp1802Obj.prototype.instruction = function() {
 
     // idle returns immediately
@@ -90,85 +94,84 @@ Cdp1802Obj.prototype.instruction = function() {
     var op = this.context.read(this.R[this.P]++);
 
     // decode
-//    this.I = (op & 0xf0) >> 4;
     this.I = op >> 4;
     this.N = op & 0x0f;
-
+	
     // Decode & execute
     switch (this.I) {
-        case 0x0:// idle or load D via reg N
+        case 0x0: // idle or load D via reg N
             if (this.N == 0x0) {
-                this.idle();
+                this.goIdle();
             } else {
                 this.loadDViaN();
             }
             return 2;
-        case 0x1:// increment reg N
+        case 0x1: // increment reg N
             this.incrementR();
             return 2;
-        case 0x2:// decrement reg N
+        case 0x2: // decrement reg N
             this.decrementR();
             return 2;
         case 0x3:
             switch (this.N) {
-                case 0x0:// always branch
+                case 0x0: // always branch
                     this.shortBranch(true);
                     return 2;
-                case 0x1:// branch if Q is on
+                case 0x1: // branch if Q is on
                     this.shortBranch(this.Q);
                     return 2;
-                case 0x2:// branch on D zero
+                case 0x2: // branch on D zero
                     this.shortBranch(this.D == 0);
                     return 2;
-                case 0x3:// branch if DF is on
+                case 0x3: // branch if DF is on
                     this.shortBranch(this.DF);
                     return 2;
-                case 0x4:// branch on external flag 1
+                case 0x4: // branch on external flag 1
                     this.shortBranch(this.context.getEF1());
                     return 2;
-                case 0x5:// branch on external flag 2
+                case 0x5: // branch on external flag 2
                     this.shortBranch(this.context.getEF2());
                     return 2;
-                case 0x6:// branch on external flag 3
+                case 0x6: // branch on external flag 3
                     this.shortBranch(this.context.getEF3());
                     return 2;
-                case 0x7:// branch on external flag 4
+                case 0x7: // branch on external flag 4
                     this.shortBranch(this.context.getEF4());
                     return 2;
-                case 0x8:// never branch
+                case 0x8: // never branch
                     this.shortBranch(false);
                     return 2;
-                case 0x9:// branch if Q is off
+                case 0x9: // branch if Q is off
                     this.shortBranch(!this.Q);
                     return 2;
-                case 0xa:// branch on D not zero
+                case 0xa: // branch on D not zero
                     this.shortBranch(this.D != 0);
                     return 2;
-                case 0xb:// branch if DF is off
+                case 0xb: // branch if DF is off
                     this.shortBranch(!this.DF);
                     return 2;
-                case 0xc:// branch on not external flag 1
+                case 0xc: // branch on not external flag 1
                     this.shortBranch(!this.context.getEF1());
                     return 2;
-                case 0xd:// branch on not external flag 2
+                case 0xd: // branch on not external flag 2
                     this.shortBranch(!this.context.getEF2());
                     return 2;
-                case 0xe:// branch on not external flag 3
+                case 0xe: // branch on not external flag 3
                     this.shortBranch(!this.context.getEF3());
                     return 2;
-                case 0xf:// branch on not external flag 4
+                case 0xf: // branch on not external flag 4
                     this.shortBranch(!this.context.getEF4());
                     return 2;
             }
-        case 0x4:// load D and advance
+        case 0x4: // load D and advance
             this.loadDViaNAdvance();
             return 2;
-        case 0x5:// store D into memory
+        case 0x5: // store D into memory
             this.storeDViaN();
             return 2;
         case 0x6:
             switch (this.N) {
-                case 0x0:// increment reg X
+                case 0x0: // increment reg X
                     this.incrementRX();
                     return 2;
                 case 0x1:
@@ -181,7 +184,7 @@ Cdp1802Obj.prototype.instruction = function() {
                     // output from memory to bus, nlines=N
                     this.out();
                     return 2;
-                case 0x8:// 68 is an unused instruction (reserved for CDP1805)
+                case 0x8: // 68 is an unused instruction (reserved for CDP1805)
                     return 2;
                 case 0x9:
                 case 0xa:
@@ -197,172 +200,172 @@ Cdp1802Obj.prototype.instruction = function() {
             break;
         case 0x7:
             switch (this.N) {
-                case 0x0:// return
+                case 0x0: // return
                     this.ret(true);
                     return 2;
-                case 0x1:// return and disable interrupts
+                case 0x1: // return and disable interrupts
                     this.ret(false);
                     return 2;
-                case 0x2:// load D via R(X) and advance
+                case 0x2: // load D via R(X) and advance
                     this.loadDViaXAdvance();
                     return 2;
-                case 0x3:// store D via R(X) and decrement
+                case 0x3: // store D via R(X) and decrement
                     this.storeDViaXDec();
                     return 2;
-                case 0x4:// add with carry
+                case 0x4: // add with carry
                     this.addCarry();
                     return 2;
-                case 0x5:// subtract D from memory with borrow
+                case 0x5: // subtract D from memory with borrow
                     this.subDBorrow();
                     return 2;
-                case 0x6:// shift D right with carry
+                case 0x6: // shift D right with carry
                     this.shiftDRightCarry();
                     return 2;
-                case 0x7:// subtract memory from D with borrow
+                case 0x7: // subtract memory from D with borrow
                     this.subMemoryBorrow();
                     return 2;
-                case 0x8:// save T
+                case 0x8: // save T
                     this.saveT();
                     return 2;
-                case 0x9:// save X and P in T
+                case 0x9: // save X and P in T
                     this.mark();
                     return 2;
-                case 0xa:// reset Q
+                case 0xa: // reset Q
                     this.setQ(false);
                     return 2;
-                case 0xb:// set Q
+                case 0xb: // set Q
                     this.setQ(true);
                     return 2;
-                case 0xc:// add with carry immediate
+                case 0xc: // add with carry immediate
                     this.addCarryImmediate();
                     return 2;
-                case 0xd:// subtract D with borrow, immediate
+                case 0xd: // subtract D with borrow, immediate
                     this.subDBorrowImmediate();
                     return 2;
-                case 0xe:// shift D left with carry
+                case 0xe: // shift D left with carry
                     this.shiftDLeftCarry();
                     return 2;
-                case 0xf:// subtract memory with borrow, immediate
+                case 0xf: // subtract memory with borrow, immediate
                     this.subMemoryBorrowImmediate();
                     return 2;
             }
-        case 0x8:// get low byte of reg N
+        case 0x8: // get low byte of reg N
             this.getLowR();
             return 2;
-        case 0x9:// get high byte of reg N
+        case 0x9: // get high byte of reg N
             this.getHighR();
             return 2;
-        case 0xa:// put this.D in low byte of reg N
+        case 0xa: // put this.D in low byte of reg N
             this.putLowR();
             return 2;
-        case 0xb:// put this.D in high byte of reg N
+        case 0xb: // put this.D in high byte of reg N
             this.putHighR();
             return 2;
         case 0xc:
             switch (this.N) {
-                case 0x0:// always long branch
+                case 0x0: // always long branch
                     this.longBranch(true);
                     return 3;
-                case 0x1:// long branch if Q is on
+                case 0x1: // long branch if Q is on
                     this.longBranch(this.Q);
                     return 3;
-                case 0x2:// long branch on this.D zero
+                case 0x2: // long branch on D zero
                     this.longBranch(this.D == 0);
                     return 3;
-                case 0x3:// long branch if this.DF is on
+                case 0x3: // long branch if DF is on
                     this.longBranch(this.DF);
                     return 3;
-                case 0x4:// no operation
-                    //this.longSkip(false);
+                case 0x4: // no operation
+                   //this.longSkip(false);
                     return 3;
-                case 0x5:// long skip if Q is off
+                case 0x5: // long skip if Q is off
                     this.longSkip(!this.Q);
                     return 3;
-                case 0x6:// long skip if D not zero
+                case 0x6: // long skip if D not zero
                     this.longSkip(this.D != 0);
                     return 3;
-                case 0x7:// long skip if this.DF is off
+                case 0x7: // long skip if DF is off
                     this.longSkip(!this.DF);
                     return 3;
-                case 0x8:// long skip
+                case 0x8: // long skip
                     this.longBranch(false);
                     return 3;
-                case 0x9:// long branch if Q is off
+                case 0x9: // long branch if Q is off
                     this.longBranch(!this.Q);
                     return 3;
-                case 0xa:// long branch on not zero
+                case 0xa: // long branch on not zero
                     this.longBranch(this.D != 0);
                     return 3;
-                case 0xb:// long branch if this.DF is off
+                case 0xb: // long branch if DF is off
                     this.longBranch(!this.DF);
                     return 3;
-                case 0xc:// long skip if interrupts enabled
+                case 0xc: // long skip if interrupts enabled
                     this.longSkip(this.IE);
                     return 3;
-                case 0xd:// long skip if Q is on
+                case 0xd: // long skip if Q is on
                     this.longSkip(this.Q);
                     return 3;
-                case 0xe:// long skip if this.D zero
+                case 0xe: // long skip if D zero
                     this.longSkip(this.D == 0);
                     return 3;
-                case 0xf:// long skip if this.DF is on
+                case 0xf: // long skip if DF is on
                     this.longSkip(this.DF);
                     return 3;
             }
-        case 0xd:// set P
+        case 0xd: // set P
             this.setP();
             return 2;
-        case 0xe:// set X
+        case 0xe: // set X
             this.setX();
             return 2;
         case 0xf:
             switch (this.N) {
-                case 0x0:// load D via R(X)
+                case 0x0: // load D via R(X)
                     this.loadDViaX();
                     return 2;
-                case 0x1:// logical OR
+                case 0x1: // logical OR
                     this.ORViaX();
                     return 2;
-                case 0x2:// logical AND
+                case 0x2: // logical AND
                     this.ANDViaX();
                     return 2;
-                case 0x3:// logical XOR
+                case 0x3: // logical XOR
                     this.XORViaX();
                     return 2;
-                case 0x4:// add
+                case 0x4: // add
                     this.add();
                     return 2;
-                case 0x5:// subtract D from memory
+                case 0x5: // subtract D from memory
                     this.subD();
                     return 2;
-                case 0x6:// shift D right
+                case 0x6: // shift D right
                     this.shiftDRight();
                     return 2;
-                case 0x7:// subtract memory from D
+                case 0x7: // subtract memory from D
                     this.subMemory();
                     return 2;
-                case 0x8:// load D immediate
+                case 0x8: // load D immediate
                     this.loadDImmediate();
                     return 2;
-                case 0x9:// OR immediate
+                case 0x9: // OR immediate
                     this.ORImmediate();
                     return 2;
-                case 0xa:// AND immediate
+                case 0xa: // AND immediate
                     this.ANDImmediate();
                     return 2;
-                case 0xb:// XOR immediate
+                case 0xb: // XOR immediate
                     this.XORImmediate();
                     return 2;
-                case 0xc:// add immediate
+                case 0xc: // add immediate
                     this.addImmediate();
                     return 2;
-                case 0xd:// subtract D from memory immediate
+                case 0xd: // subtract D from memory immediate
                     this.subDImmediate();
                     return 2;
-                case 0xe:// shift D left
+                case 0xe: // shift D left
                     this.shiftDLeft();
                     return 2;
-                case 0xf:// subtract memory from D immediate
+                case 0xf: // subtract memory from D immediate
                     this.subMemoryImmediate();
                     return 2;
             }
@@ -394,7 +397,6 @@ Cdp1802Obj.prototype.interrupt = function() {
 /* INPUT - OUTPUT BYTE TRANSFER */
 
 Cdp1802Obj.prototype.out = function() {
-//    this.context.out(this.N & 0x7, this.context.read(this.R[this.X]++));
     this.context.out(this.N, this.context.read(this.R[this.X]++));
 }
 
@@ -673,7 +675,7 @@ Cdp1802Obj.prototype.longSkip = function(b) {
 /* CONTROL INSTRUCTIONS */
 
 // IDL 00 - Idle
-Cdp1802Obj.prototype.idle = function() {
+Cdp1802Obj.prototype.goIdle = function() {
     this.idle = true;
     this.context.out(0, this.context.read(this.R[0]));
 }

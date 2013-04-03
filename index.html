@@ -2,36 +2,37 @@
 <html>
 <head>
 <title>CosmacElf emulator</title>
-<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
-<script src="cdp1802.js"></script>
-<script src="jquery-1.9.1.min.js"></script>
+<meta charset='UTF-8'>
+<script src='js/cdp1802.js'></script>
+<script src='js/raf.js'></script>
+<script src='js/cosmacelf.js'></script>
+<script src='js/jquery-1.9.1.min.js'></script>
 <script>
-var switchX = [ 351, 307, 264, 222, 180, 138,  95,  52, 348, 307, 100,  65 ];
-var switchY = [ 333, 333, 333, 333, 333, 333, 333, 333, 268, 268, 268, 305 ];
-var switchW = [ 42, 44, 43, 42, 42, 42, 43, 43, 38, 41, 34, 26 ];
-var switchH = [ 66, 66, 66, 66, 66, 66, 66, 66, 65, 65, 65, 24 ];
-
+ // execute when whole page is fully loaded
 $(window).load(function() {
-	var c = document.getElementById("elfCanvas");
-	ctx = c.getContext("2d");
-	offImg = document.getElementById("cosmacOffImage");
-	onImg = document.getElementById("cosmacOnImage");
+	// get graphics
+	var offImg = document.getElementById('cosmacOffImage');
+	var onImg = document.getElementById('cosmacOnImage');
+	var hexImg = document.getElementById('displayImage');
+	
+	// get drawing context and draw initial image
+	var c = document.getElementById('elfCanvas');
+	var ctx = c.getContext('2d');
 	ctx.drawImage(offImg, 0, 0);
+	
+	// start emulation
+	var emu = new CosmacElfObj(ctx, offImg, onImg, hexImg);
+	emu.emulate();
 });
-
-function draw(nr) {
-	ctx.drawImage(onImg, switchX[nr], switchY[nr], switchW[nr],
-		switchH[nr], switchX[nr], switchY[nr], switchW[nr], switchH[nr]);
-}
 </script>
 </head>
 <body>
-<img id="cosmacOffImage" src="images/cosmac-off.gif" alt="CosmacElf with buttons off" style="display:none;" />
-<img id="cosmacOnImage" src="images/cosmac-on.gif" alt="CosmacElf with buttons on" style="display:none;" />
+<img id='cosmacOffImage' src='images/cosmac-off.gif' alt='Cosmac Elf with buttons off' style='display:none;' />
+<img id='cosmacOnImage' src='images/cosmac-on.gif' alt='Cosmac Elf with buttons on' style='display:none;' />
+<img id='displayImage' src='images/display.gif' alt='All digits of the hex display' style='display:none;' />
 
-<canvas id="elfCanvas" width="452" height="415">
+<canvas id='elfCanvas' width='452' height='415'>
 Your browser does not support the HTML5 canvas tag.</canvas>
 
-<button onclick="draw(0)">0</button><button onclick="draw(1)">1</button><button onclick="draw(2)">2</button><button onclick="draw(3)">3</button><button onclick="draw(4)">4</button><button onclick="draw(5)">5</button><button onclick="draw(6)">6</button><button onclick="draw(7)">7</button><button onclick="draw(8)">8</button><button onclick="draw(9)">9</button><button onclick="draw(10)">10</button><button onclick="draw(11)">11</button>
 </body>
 </html>
