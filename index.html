@@ -13,6 +13,7 @@ $(window).load(function() {
 	// get graphics
 	var offImg = document.getElementById('cosmacOffImage');
 	var onImg = document.getElementById('cosmacOnImage');
+	var ledOnImg = document.getElementById('ledOnImage');
 	var hexImg = document.getElementById('displayImage');
 	
 	// get drawing context and draw initial image
@@ -21,15 +22,16 @@ $(window).load(function() {
 	ctx.drawImage(offImg, 0, 0);
 	
 	// start emulation
-	var emu = new CosmacElfObj(ctx, offImg, onImg, hexImg);
+	var emu = new CosmacElfObj(c, ctx, offImg, onImg, ledOnImg, hexImg);
 	emu.emulate();
 });
 </script>
 </head>
 <body>
-<img id='cosmacOffImage' src='images/cosmac-off.gif' alt='Cosmac Elf with buttons off' style='display:none;' />
-<img id='cosmacOnImage' src='images/cosmac-on.gif' alt='Cosmac Elf with buttons on' style='display:none;' />
-<img id='displayImage' src='images/display.gif' alt='All digits of the hex display' style='display:none;' />
+<img id='cosmacOffImage' src='images/cosmac-off.png' alt='Cosmac Elf with switches off' style='display:none;' />
+<img id='cosmacOnImage' src='images/cosmac-on.png' alt='Cosmac Elf with switches on' style='display:none;' />
+<img id='ledOnImage' src='images/led-on.png' alt='Cosmac Elf LED in on state' style='display:none;' />
+<img id='displayImage' src='images/display.png' alt='All digits of the hex display' style='display:none;' />
 
 <canvas id='elfCanvas' width='452' height='415'>
 Your browser does not support the HTML5 canvas tag.</canvas>
