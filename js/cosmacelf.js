@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//
 // Represents a Cosmac Elf computer.
+//
 
-var CosmacElfObj = function(ctx, offImg, onImg, hexImg) {
+var CosmacElfObj = function(canvas, ctx, offImg, onImg, ledOnImg, hexImg) {
 	
+	this.canvas = canvas;
 	this.ctx = ctx;
 	this.offImg = offImg;
 	this.onImg = onImg;
+	this.ledOnImg = ledOnImg;
 	this.hexImg = hexImg;
 	
 	//
@@ -34,25 +38,19 @@ var CosmacElfObj = function(ctx, offImg, onImg, hexImg) {
 	
 	// clock frequency (should be between 1-2 MHz)
 	// 8 clocks are required for 1 machine cycle
-	this.clockFreq = 1000000;
+	this.clockFreq = 1760640;
 	
 	// the hex value being displayed
 	this.display = 0;
 	
 	// state of the led, based on the Q output from the CPU
 	this.led = false;
-	
-	// state of the IN button (goes into EF4)
-	this.in = false;
-	
-	// state of the Load switch (determines CPU running state)
-	this.load = false;
-	
-	// state of the Run switch (determines CPU running state)
-	this.run = false;
-	
-	// state of the Memory Protect switch
-	this.mp = false;
+
+	// state of the 12 inputs
+	this.switchState = [ false, false, false, false, false, false, false, false, false, false, false, false ];
+
+	// reset CPU
+	this.cpu.reset();
 	
 	//
 	// USER INTERFACE RELATED VARIABLES
@@ -66,15 +64,12 @@ var CosmacElfObj = function(ctx, offImg, onImg, hexImg) {
 	// most CPU instructions require 2 machine cycles
 	this.cyclesPerFrame = this.clockFreq / 8 / this.fps;
 
-	// reset CPU
-	this.cpu.reset();
-
 	// location and dimension of switches, display, and LED
-	this.switchX = [ 351, 307, 264, 222, 180, 138,  95,  52, 348, 307, 100,  65 ];
+	this.switchX = [ 351, 307, 264, 222, 180, 138,  95,  52, 350, 307, 100,  65 ];
 	this.switchY = [ 333, 333, 333, 333, 333, 333, 333, 333, 268, 268, 268, 305 ];
-	this.switchW = [ 42, 44, 43, 42, 42, 42, 43, 43, 38, 41, 34, 26 ];
-	this.switchH = [ 66, 66, 66, 66, 66, 66, 66, 66, 65, 65, 65, 24 ];
-	this.switchState = [ false, false, false, false, false, false, false, false, false, false, false, false ];
+	this.switchOnY = [ 65, 65, 65, 65, 65, 65, 65, 65, 0, 0, 0, 37 ];
+	this.switchW = [ 42, 44, 43, 42, 42, 42, 43, 43, 40, 41, 40, 28 ];
+	this.switchH = [ 66, 66, 66, 66, 66, 66, 66, 66, 65, 65, 65, 26 ];
 	this.switchDirty = [ false, false, false, false, false, false, false, false, false, false, false, false ];
 
 	this.display1X = 233;
@@ -85,7 +80,7 @@ var CosmacElfObj = function(ctx, offImg, onImg, hexImg) {
 	this.displayDirty = false;
 
 	this.ledX = 222;
-	this.ledY = 174;
+	this.ledY = 175;
 	this.ledW = 13;
 	this.ledH = 17;
 	this.ledDirty = false;
@@ -108,7 +103,7 @@ var CosmacElfObj = function(ctx, offImg, onImg, hexImg) {
 		71: 10  // G -> load
 	};
 	
-	// install event handlers on the document
+	// install event handlers
 	this.installEventHandlers();
 };
 
@@ -117,8 +112,7 @@ var CosmacElfObj = function(ctx, offImg, onImg, hexImg) {
 //
 
 // Sets the output flip-flop Q from the CPU
-CosmacElfObj.prototype.q = function(q) {
-//alert("q:"+q+(this.ledDirty || (this.led != q)));
+CosmacElfObj.prototype.setQ = function(q) {
 	this.ledDirty = this.ledDirty || (this.led != q);
 	this.led = q;
 }
@@ -133,7 +127,7 @@ CosmacElfObj.prototype.read = function(address) { //16 bit unsigned
 
 // Write a byte to memory
 CosmacElfObj.prototype.write = function(address, data) { //16 bit unsigned address
-	if (!this.mp && address >= 0 && address < this.memory.length) {
+	if (!this.switchState[9] && address >= 0 && address < this.memory.length) {
 		this.memory[address] = data;
 	}
 	this.display = this.read(address);
@@ -141,7 +135,7 @@ CosmacElfObj.prototype.write = function(address, data) { //16 bit unsigned addre
 }
 
 // The CPU uses this to input 8-bit unsigned data from the system bus
-CosmacElfObj.prototype.in = function(nlines) { //Nlines = 1-7
+CosmacElfObj.prototype.input = function(nlines) { //Nlines = 1-7
 	if (nlines == 4) {
 		var data = 0;
 		for (var i = 0; i < 8; i++) {
@@ -153,7 +147,7 @@ CosmacElfObj.prototype.in = function(nlines) { //Nlines = 1-7
 }
 
 // The CPU uses this to output data onto the system bus
-CosmacElfObj.prototype.out = function(nlines, bus) { //Nlines = 1-7, bus=8-bit unsigned
+CosmacElfObj.prototype.output = function(nlines, bus) { //Nlines = 1-7, bus=8-bit unsigned
 	if (nlines == 4) {
 		this.display = bus;
 		this.displayDirty = displayDirty || display != bus;
@@ -161,10 +155,14 @@ CosmacElfObj.prototype.out = function(nlines, bus) { //Nlines = 1-7, bus=8-bit u
 }
 
 // The CPU uses this to get 1-bit External Flags EF1-EF4
-CosmacElfObj.prototype.ef1 = function() { return false; };
-CosmacElfObj.prototype.ef2 = function() { return false; };
-CosmacElfObj.prototype.ef3 = function() { return false; };
-CosmacElfObj.prototype.ef4 = function() { return this.in; };
+CosmacElfObj.prototype.getEF1 = function() { return false; }
+CosmacElfObj.prototype.getEF2 = function() { return false; }
+CosmacElfObj.prototype.getEF3 = function() { return false; }
+CosmacElfObj.prototype.getEF4 = function() { return this.switchState[11]; }
+	
+//
+// USER INTERFACE RELATED PROTOTYPES
+//
 
 // emulation loop running at approx. fps
 CosmacElfObj.prototype.emulate = function() {
@@ -178,73 +176,29 @@ CosmacElfObj.prototype.emulate = function() {
 
 // update machine state
 CosmacElfObj.prototype.update = function() {
-	if (this.run && !this.load) {
+	if (this.switchState[8] && !this.switchState[10]) { // Run but not Load
 		var cycles = this.cyclesPerFrame;
 		while (cycles > 0) {
 			cycles -= this.cpu.instruction();
 		}
 	}
 }
-	
-//
-// USER INTERFACE PROTOTYPES
-//
 
-// install event handlers
-CosmacElfObj.prototype.installEventHandlers = function() {
-	var emu = this;
-	$(document).keydown(function(event) {
-		if (event.which == emu.inButtonKey) { // IN key down
-			emu.in = true;
-			emu.switchState[11] = true;
-			emu.switchDirty[11] = true;
-			if (!emu.run && emu.load) {
-				var data = 0;
-				for (var i = 0; i < 8; i++) {
-					data |= (emu.switchState[i] ? 1 : 0) << i;
-				}
-				emu.cpu.dmaIn(data);
-			}			
-		}
-	})
-	.keyup(function(event) {
-		// change state of 11 toggle buttons and set to dirty
-		if (event.which in emu.keyMap) { // key defined in keyMap
-			var idx = emu.keyMap[event.which];
-			emu.switchState[idx] = !emu.switchState[idx];
-			emu.switchDirty[idx] = true;
-		}
-		
-		// handle key specific behavior
-		if (event.which == emu.inButtonKey) { // IN button
-			emu.in = false;
-			emu.switchState[11] = false;
-			emu.switchDirty[11] = true;
-		} else if (idx == 10) { // load button
-			emu.load = !emu.load;
-		} else if (idx == 9) {  // mp button
-			emu.mp = !emu.mp;
-		} else if (idx == 8) {  // run button
-			emu.run = !emu.run;
-		}
-		
-		// load and run buttons may trigger CPU reset
-		if ((idx == 8 || idx == 10) && !emu.load && !emu.run) {
-			if (!emu.load && !emu.run) {
-				emu.cpu.reset();
-			}
-		}
-	});
-}
-
-// updating of the user interface
+// update user interface
 CosmacElfObj.prototype.draw = function() {
 	for (var i=0; i<this.switchDirty.length; i++) {
 		if (this.switchDirty[i]) {
 			this.switchDirty[i] = false;
-			this.ctx.drawImage(this.switchState[i] ? this.onImg : this.offImg,
-					this.switchX[i], this.switchY[i], this.switchW[i], this.switchH[i], 
-					this.switchX[i], this.switchY[i], this.switchW[i], this.switchH[i]);
+			
+			if (this.switchState[i]) {
+				this.ctx.drawImage(this.onImg,
+						this.switchX[i], this.switchOnY[i], this.switchW[i], this.switchH[i], 
+						this.switchX[i], this.switchY[i], this.switchW[i], this.switchH[i]);
+			} else {
+				this.ctx.drawImage(this.offImg,
+						this.switchX[i], this.switchY[i], this.switchW[i], this.switchH[i], 
+						this.switchX[i], this.switchY[i], this.switchW[i], this.switchH[i]);
+			}
 		}
 	}
 	
@@ -263,8 +217,106 @@ CosmacElfObj.prototype.draw = function() {
 	if (this.ledDirty) {
 		this.ledDirty = false;
 	
-		this.ctx.drawImage(this.led ? this.onImg : this.offImg,
-				this.ledX, this.ledY, this.ledW, this.ledH,
-				this.ledX, this.ledY, this.ledW, this.ledH);
+		if (this.led) {
+			this.ctx.drawImage(this.ledOnImg, 0, 0, this.ledW, this.ledH,
+					this.ledX, this.ledY, this.ledW, this.ledH);
+		} else {
+			this.ctx.drawImage(this.offImg, this.ledX, this.ledY, this.ledW, this.ledH,
+					this.ledX, this.ledY, this.ledW, this.ledH);
+		}
+	}
+}
+
+// install event handlers
+CosmacElfObj.prototype.installEventHandlers = function() {
+	var emu = this;
+	$(document).keydown(function(event) {
+		if (event.which == emu.inButtonKey) { // IN key down
+			emu.inButtonDown();
+		}
+	})
+	.keyup(function(event) {
+		// change state of buttons and set to dirty
+		if (event.which == emu.inButtonKey) { // IN button
+			emu.switchState[11] = false;
+			emu.switchDirty[11] = true;
+		} else if (event.which in emu.keyMap) { // key defined in keyMap
+			var idx = emu.keyMap[event.which];
+			emu.switchState[idx] = !emu.switchState[idx];
+			emu.switchDirty[idx] = true;
+		}
+		
+		// load and run buttons may trigger CPU reset
+		if (idx == 8 || idx == 10) {
+			if (!emu.switchState[10] && !emu.switchState[8]) {
+				emu.cpu.reset();
+			}
+		}
+	});
+	$('canvas#elfCanvas').mousedown(function(event) {
+		var x = event.pageX - this.offsetLeft;
+		var y = event.pageY - this.offsetTop;
+		
+		if (x > emu.switchX[11] && x < emu.switchX[11]+emu.switchW[11] // IN button
+				&& y > emu.switchY[11] && y < emu.switchY[11]+emu.switchH[11]) {
+			emu.inButtonDown();
+		}
+	})
+	.mouseup(function(event) {
+		var x = event.pageX - this.offsetLeft;
+		var y = event.pageY - this.offsetTop;
+
+		// find out which button/switch was clicked
+		for (var i=0; i<emu.switchX.length; i++) {
+			if (x > emu.switchX[i] && x < emu.switchX[i]+emu.switchW[i]
+					&& y > emu.switchY[i] && y < emu.switchY[i]+emu.switchH[i]) {
+				// toggle the button/switch
+				if (i == 11) { // IN button
+					emu.switchState[11] = false;
+					emu.switchDirty[11] = true;
+				} else { // key defined in keyMap
+					emu.switchState[i] = !emu.switchState[i];
+					emu.switchDirty[i] = true;
+				}
+				
+				// load and run buttons may trigger CPU reset
+				if (i == 8 || i == 10) {
+					if (!emu.switchState[10] && !emu.switchState[8]) {
+						emu.cpu.reset();
+					}
+				}
+				break;
+			}
+		}
+	});
+}
+
+// IN button was pushed down
+CosmacElfObj.prototype.inButtonDown = function() {
+	this.switchState[11] = true;
+	this.switchDirty[11] = true;
+	
+	// in Load mode, IN causes a DMA-IN of the current input byte
+	if (!this.switchState[8] && this.switchState[10]) { 
+		var data = 0;
+		for (var i = 0; i < 8; i++) {
+			data |= (this.switchState[i] ? 1 : 0) << i;
+		}
+		this.cpu.dmaIn(data);
+	}			
+}
+
+// draw outlines of each switch/button
+// for debugging of drawing and mouse events
+CosmacElfObj.prototype.drawButtonOutlines = function() {
+	for (var i=0; i<this.switchX.length; i++) {
+		this.ctx.beginPath();
+		this.ctx.strokeStyle = '#f00';
+		this.ctx.moveTo(this.switchX[i], this.switchY[i]);
+		this.ctx.lineTo(this.switchX[i]+this.switchW[i], this.switchY[i]);
+		this.ctx.lineTo(this.switchX[i]+this.switchW[i], this.switchY[i]+this.switchH[i]);
+		this.ctx.lineTo(this.switchX[i], this.switchY[i]+this.switchH[i]);
+		this.ctx.lineTo(this.switchX[i], this.switchY[i]);
+		this.ctx.stroke();
 	}
 }
