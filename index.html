@@ -6,32 +6,19 @@
 <script src='js/cdp1802.js'></script>
 <script src='js/raf.js'></script>
 <script src='js/cosmacelf.js'></script>
+<script src='js/cosmacelfui.js'></script>
 <script src='js/jquery-1.9.1.min.js'></script>
 <script>
  // execute when whole page is fully loaded
 $(window).load(function() {
-	// get graphics
-	var offImg = document.getElementById('cosmacOffImage');
-	var onImg = document.getElementById('cosmacOnImage');
-	var ledOnImg = document.getElementById('ledOnImage');
-	var hexImg = document.getElementById('displayImage');
-	
-	// get drawing context and draw initial image
-	var c = document.getElementById('elfCanvas');
-	var ctx = c.getContext('2d');
-	ctx.drawImage(offImg, 0, 0);
-	
 	// start emulation
-	var emu = new CosmacElfObj(c, ctx, offImg, onImg, ledOnImg, hexImg);
-	emu.emulate();
+	var elfUI = new CosmacElfUIObj();
+	elfUI.createUI('canvas#elfCanvas');
+	elfUI.start();
 });
 </script>
 </head>
 <body>
-<img id='cosmacOffImage' src='images/cosmac-off.png' alt='Cosmac Elf with switches off' style='display:none;' />
-<img id='cosmacOnImage' src='images/cosmac-on.png' alt='Cosmac Elf with switches on' style='display:none;' />
-<img id='ledOnImage' src='images/led-on.png' alt='Cosmac Elf LED in on state' style='display:none;' />
-<img id='displayImage' src='images/display.png' alt='All digits of the hex display' style='display:none;' />
 
 <h2>Cosmac Elf emulator in JavaScript</h2>
 <canvas id='elfCanvas' width='452' height='415'>
