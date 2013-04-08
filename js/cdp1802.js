@@ -299,7 +299,7 @@ Cdp1802Obj.prototype.instruction = function() {
                 case 0xb: // long branch if DF is off
                     this.longBranch(!this.DF);
                     return 3;
-                case 0xc: // long skip if interrupts enabled
+                case 0xc: // long skip if interrupt enabled
                     this.longSkip(this.IE);
                     return 3;
                 case 0xd: // long skip if Q is on
@@ -378,14 +378,17 @@ Cdp1802Obj.prototype.instruction = function() {
 /* DMA AND INTERRUPT OPERATIONS */
 
 Cdp1802Obj.prototype.dmaIn = function(data) {
+	this.idle = false;
     this.context.write(this.R[0]++, data);
 }
 
 Cdp1802Obj.prototype.dmaOut = function() {
+	this.idle = false;
     return this.context.read(this.R[0]++);
 }
 
 Cdp1802Obj.prototype.interrupt = function() {
+	this.idle = false;
     this.IE = false;
     this.T = (this.X << 4) | this.P;
     this.P = 1;
@@ -437,7 +440,7 @@ Cdp1802Obj.prototype.storeDViaN = function() {
     this.context.write(this.R[this.N], this.D);
 }
 
-// STXD 73 Store via X and this.Decrement
+// STXD 73 Store via X and decrement
 Cdp1802Obj.prototype.storeDViaXDec = function() {
     this.context.write(this.R[this.X]--, this.D);
 }
@@ -585,28 +588,28 @@ Cdp1802Obj.prototype.addCarryImmediate = function() {
     this.DF = (temp & 0x100) > 0;
 }
 
-// SD F5 - Subtract this.D
+// SD F5 - Subtract D
 Cdp1802Obj.prototype.subD = function() {
     var temp = this.context.read(this.R[this.X]) - this.D;
     this.D = temp & 0xff;
     this.DF = temp >= 0;
 }
 
-// SDI FD - Subtract this.D immediate
+// SDI FD - Subtract D immediate
 Cdp1802Obj.prototype.subDImmediate = function() {
     var temp = this.context.read(this.R[this.P]++) - this.D;
     this.D = temp & 0xff;
     this.DF = temp >= 0;
 }
 
-// SDB 75 - Subtract this.D with borrow
+// SDB 75 - Subtract D with borrow
 Cdp1802Obj.prototype.subDBorrow = function() {
     var temp = this.context.read(this.R[this.X]) - this.D - (this.DF ? 0 : 1);
     this.D = temp & 0xff;
     this.DF = temp >= 0;
 }
 
-// SDBI 7D - Subtract this.D with borrow, immediate
+// SDBI 7D - Subtract D with borrow, immediate
 Cdp1802Obj.prototype.subDBorrowImmediate = function() {
     var temp = this.context.read(this.R[this.P]++) - this.D - (this.DF ? 0 : 1);
     this.D = temp & 0xff;
