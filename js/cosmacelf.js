@@ -261,6 +261,7 @@ CosmacElfObj.prototype.installEventHandlers = function() {
 				&& y > emu.switchY[11] && y < emu.switchY[11]+emu.switchH[11]) {
 			emu.inButtonDown();
 		}
+		return false;
 	})
 	.mouseup(function(event) {
 		var x = event.pageX - this.offsetLeft;
@@ -288,6 +289,7 @@ CosmacElfObj.prototype.installEventHandlers = function() {
 				break;
 			}
 		}
+		return false;
 	});
 }
 
